@@ -1,61 +1,74 @@
-# nacos-frontend
+# Nacos Console UI (Next)
 
-这个仓库用于存放二开后的 Nacos 前端代码，建议直接把 `console-ui-next` 目录内容放到仓库根目录。
+The new Nacos console frontend, built with React 19 + TypeScript + Vite 7 + Tailwind CSS 4 + Shadcn/ui.
 
-## 推送代码
+## Prerequisites
+
+- Node.js >= 20.19+
+- npm >= 10
+
+## .npmrc Configuration
+
+本项目配置了 `.npmrc` 文件，设置 `min-release-age=3`，确保 `npm install` 时不安装发布时间不足 3 天的包，降低供应链风险。
+
+This project uses `.npmrc` with `min-release-age=3` to ensure `npm install` does not install packages released less than 3 days ago, reducing supply chain risks.
+
+> 注意：`min-release-age` 仅 npm >= 11 生效，单位：天。
+>
+> Note: `min-release-age` only takes effect with npm >= 11. Unit: day.
+>
+> 参考 / Ref: https://docs.npmjs.com/cli/v11/commands/npm-install#min-release-age
+
+## Install Dependencies
 
 ```bash
-git clone https://github.com/archinfra/nacos-frontend.git
-cd nacos-frontend
-# 把 console-ui-next 目录里的内容复制到这里，根目录需要有 package.json
-git add .
-git commit -m "feat: import nacos frontend"
-git push origin main
+npm install
 ```
 
-## GitHub Actions 构建
+## Local Development
 
-`.github/workflows/frontend-ci.yml` 会在 push、PR、手动触发时执行：
+```bash
+npm run dev
+```
 
-- 如果存在 `pnpm-lock.yaml`：使用 pnpm
-- 如果存在 `yarn.lock`：使用 yarn
-- 如果存在 `package-lock.json`：使用 npm ci
-- 否则使用 npm install
+Visit http://localhost:8000. Vite proxy rules:
 
-然后执行：
+- `/nacos/v1/auth/*`, `/nacos/v3/auth/*` are forwarded to Admin Server (localhost:8848)
+- All other `/nacos/*` requests are forwarded to Console Server (localhost:8080, with `/nacos` prefix stripped)
+
+## Build
 
 ```bash
 npm run build
 ```
 
-或者对应包管理器的 `build` 命令。
+Build pipeline: `tsc -b` (TypeScript type checking) + `vite build` (production build). Output goes to the `dist/` directory.
 
-构建产物会上传到 Actions Artifacts，保留 14 天。默认收集：
+## Deploy
 
-```text
-dist/
-build/
-out/
-.output/
+Copy build artifacts to the backend static resources directory:
+
+```bash
+rm -rf ../console/src/main/resources/static/next/*
+cp -r dist/* ../console/src/main/resources/static/next/
 ```
 
-## 与后端联调
+Deployed directory structure:
 
-前端开发阶段建议通过 Vite dev server 的 proxy 转发到后端：
-
-```text
-/v3 -> http://localhost:8080
-/v1 -> http://localhost:8080
+```
+console/src/main/resources/static/next/
+├── index.html
+├── css/
+├── js/
+├── img/
+├── favicon.svg
+└── icons.svg
 ```
 
-如果只走 GitHub Actions 构建，先确保 `src/api/registry.ts` 的管理端 API 基础路径是：
+## contextPath Adaptation
 
-```ts
-const BASE = 'v3/admin/ai/registry';
-```
+Build artifacts use relative paths (`./`), adapting to any `nacos.console.contextPath` configuration value. No rebuild is needed for different contextPath settings.
 
-运行时客户端接口保持：
+## Proxy Configuration
 
-```ts
-const CLIENT_BASE = 'v3/client/ai/registry';
-```
+Development proxy rules are configured in `vite.config.ts` under `server.proxy`.
